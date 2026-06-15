@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Biblioteca Digital Personal</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root[data-theme="light"] {
+            --bg-primary: #f5f7fb;
+            --bg-sidebar: #1e293b;
+            --text-main: #334155;
+            --text-light: #64748b;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --accent: #3b82f6;
+            --toast-bg: #1e293b;
+            --toast-text: #ffffff;
+        }
+        :root[data-theme="dark"] {
+            --bg-primary: #0f172a;
+            --bg-sidebar: #020617;
+            --text-main: #f1f5f9;
+            --text-light: #94a3b8;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --accent: #60a5fa;
+            --toast-bg: #f1f5f9;
+            --toast-text: #0f172a;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { display: flex; background: var(--bg-primary); color: var(--text-main); min-height: 100vh; }
+        
+        /* Menú Lateral */
+        .sidebar { width: 260px; background: var(--bg-sidebar); color: #fff; padding: 20px; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar h2 { font-size: 1.3rem; margin-bottom: 30px; text-align: center; color: var(--accent); }
+        .nav-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+        .nav-links a { color: #cbd5e1; text-decoration: none; padding: 12px; border-radius: 8px; display: block; cursor: pointer; transition: 0.2s; }
+        .nav-links a:hover, .nav-links a.active { background: var(--accent); color: #fff; }
+        .theme-switch { margin-top: auto; padding: 10px; text-align: center; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; }
+        
+        /* Contenido Principal */
+        .main-content { flex-grow: 1; padding: 40px; overflow-y: auto; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        h2 { margin-bottom: 20px; }
+
+        /* Buscadores y Formularios */
+        .search-box, .filter-box { display: flex; gap: 10px; margin-bottom: 25px; flex-wrap: wrap; }
+        input[type="text"], input[type="number"], select, textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--card-bg); color: var(--text-main); font-size: 1rem; }
+        button { padding: 12px 24px; background: var(--accent); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        button:hover { opacity: 0.9; }
+
+        /* Grid de Resultados */
+        .search-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px; margin-top: 20px; }
+        .result-book-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; text-align: center; cursor: pointer; transition: 0.2s; }
+        .result-book-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .result-book-card img { width: 100%; height: 180px; object-fit: cover; border-radius: 4px; }
+
+        /* Formulario de registro/edición */
+        .register-panel { display: flex; gap: 30px; background: var(--card-bg); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; margin-top: 30px; }
+        .register-panel img { width: 150px; height: 220px; object-fit: cover; border-radius: 6px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .hidden { display: none !important; }
+
+        /* Barra de progreso */
+        .progress-container { width: 100%; background: #e2e8f0; height: 16px; border-radius: 8px; margin: 10px 0; overflow: hidden; position: relative; }
+        .progress-bar { height: 100%; background: #2ecc71; width: 0%; transition: width 0.3s; }
+        .progress-text { font-size: 0.85rem; color: var(--text-light); }
+
+        /* Estrellas */
+        .stars { color: #f1c40f; font-size: 1.5rem; margin: 10px 0; cursor: pointer; }
+
+        /* Tarjetas de Reseñas / Historial */
+        .review-card { display: flex; gap: 20px; background: var(--card-bg); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; margin-bottom: 20px; position: relative; }
+        .review-card img { width: 100px; height: 150px; object-fit: cover; border-radius: 6px; }
+        .empty-msg { text-align: center; color: var(--text-light); font-style: italic; margin-top: 30px; width: 100%; }
+        
+        /* Etiquetas de estado */
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; margin-bottom: 5px; }
+        .badge-leyendo { background: #3498db; color: #fff; }
+        .badge-terminado { background: #2ecc71; color: #fff; }
+        .badge-abandonado { background: #e74c3c; color: #fff; }
+
+        /* Estadísticas */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+        .stat-card { background: var(--card-bg); border: 1px solid var(--border-color); padding: 25px; border-radius: 12px; text-align: center; }
+        .stat-card h3 { font-size: 2.5rem; color: var(--accent); margin-bottom: 5px; }
+
+        /* Sistema de Toasts (Notificaciones) */
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background: var(--toast-bg); color: var(--toast-text); padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: 500; display: flex; align-items: center; gap: 10px; transform: translateX(120%); transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        .toast.show { transform: translateX(0); }
+        .toast i { font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+
+    <div id="toast-container"></div>
+
+    <nav class="sidebar">
+        <h2>Mi Biblioteca</h2>
+        <ul class="nav-links">
+            <li><a onclick="showSection('principal')" class="active"><i class="fas fa-search"></i> Buscar Libros</a></li>
+            <li><a onclick="showSection('generos-section')"><i class="fas fa-th-list"></i> Ver por Géneros</a></li>
+            <li><a onclick="showSection('resenias-section')"><i class="fas fa-history"></i> Historial e Histórico</a></li>
+            <li><a onclick="showSection('estadisticas')"><i class="fas fa-chart-bar"></i> Estadísticas</a></li>
+            <li><a onclick="showSection('recomendaciones')"><i class="fas fa-lightbulb"></i> Recomendaciones</a></li>
+        </ul>
+        <div class="theme-switch" onclick="toggleTheme()"><i class="fas fa-moon"></i> Cambiar Modo</div>
+    </nav>
+
+    <main class="main-content">
+
+        <section id="principal" class="content-section active">
+            <h2>Buscar en la Base de Datos Mundial</h2>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Escribe el título de un libro o autor..." onkeypress="if(event.key === 'Enter') buscarLibro()">
+                <button onclick="buscarLibro()"><i class="fas fa-search"></i> Buscar</button>
+            </div>
+            <div id="search-results" class="search-results"></div>
+
+            <div id="register-form" class="register-panel hidden">
+                <div style="text-align: center;">
+                    <img id="preview-cover" src="" alt="Portada">
+                </div>
+                <div style="flex-grow: 1;">
+                    <h3 id="preview-title">Título del Libro</h3>
+                    <p id="preview-author" style="color: var(--text-light); margin-bottom: 10px;">Autor</p>
+                    <p id="preview-pages" style="font-size: 0.9rem; font-weight: bold; margin-bottom: 15px;">Páginas</p>
+                    
+                    <div class="form-group">
+                        <label for="book-status">Estado de lectura:</label>
+                        <select id="book-status" onchange="comprobarEstadoCambio()">
+                            <option value="leyendo">Leyendo actualmente</option>
+                            <option value="terminado">Terminado por completo</option>
+                            <option value="abandonado">Abandonado / Pausado</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="pages-read">¿Hasta qué página leíste?</label>
+                        <input type="number" id="pages-read" min="0" value="0" oninput="calcularProgreso()">
+                        <div class="progress-container">
+                            <div id="progress-bar-fill" class="progress-bar"></div>
+                        </div>
+                        <span id="progress-text" class="progress-text">0% completado</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tu Calificación:</label>
+                        <input type="range" id="rating-slider" min="0" max="5" step="0.5" value="0" oninput="updateStars(this.value)">
+                        <div id="star-display" class="stars"></div>
+                        <span id="rating-value" style="font-size: 0.9rem; font-weight: bold;">0</span> / 5
+                    </div>
+
+                    <div class="form-group">
+                        <label for="review-comment">Notas o Comentarios:</label>
+                        <textarea id="review-comment" rows="3" placeholder="¿Qué te pareció el libro hasta ahora? (Opcional)"></textarea>
+                    </div>
+
+                    <button onclick="guardarLibro()" style="background: #2ecc71;"><i class="fas fa-save"></i> Guardar Progreso</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="generos-section" class="content-section">
+            <h2>Explorar por Categoría Literaria</h2>
+            <div class="filter-box">
+                <select id="genre-select">
+                    <option value="">-- Elige un género literario --</option>
+                    <option value="fantasy">Fantasía</option>
+                    <option value="science_fiction">Ciencia Ficción</option>
+                    <option value="horror">Terror / Horror</option>
+                    <option value="romance">Romance</option>
+                    <option value="mystery_and_detective_stories">Misterio y Policial</option>
+                    <option value="history">Historia</option>
+                    <option value="biography">Biografías</option>
+                </select>
+                <button onclick="buscarPorGenero()" style="background: #e67e22;"><i class="fas fa-filter"></i> Filtrar</button>
+            </div>
+            <div id="genre-results" class="search-results"></div>
+        </section>
+
+        <section id="resenias-section" class="content-section">
+            <h2>Historial Completo de tus Lecturas</h2>
+            <div class="filter-box" style="align-items: center; gap: 15px;">
+                <div style="flex-grow: 1; min-width: 200px;">
+                    <label for="sort-select" style="font-weight: bold; display: block; margin-bottom: 5px;">Ordenar histórico por: </label>
+                    <select id="sort-select" onchange="renderResenias()">
+                        <option value="recientes">Más recientes primero</option>
+                        <option value="rating-desc">Mejor calificados (★ 5-1)</option>
+                        <option value="rating-asc">Peor calificados (★ 1-5)</option>
+                        <option value="progreso-desc">Mayor progreso leído (%)</option>
+                        <option value="progreso-asc">Menor progreso leído (%)</option>
+                        <option value="paginas-desc">Libros más largos (Páginas)</option>
+                        <option value="paginas-asc">Libros más cortos (Páginas)</option>
+                    </select>
+                </div>
+                <div style="flex-grow: 1; min-width: 200px;">
+                    <label for="status-filter" style="font-weight: bold; display: block; margin-bottom: 5px;">Filtrar por Estado: </label>
+                    <select id="status-filter" onchange="renderResenias()">
+                        <option value="todos">Todos los estados</option>
+                        <option value="leyendo">Leyendo actualmente</option>
+                        <option value="terminado">Terminados</option>
+                        <option value="abandonado">Abandonados</option>
+                    </select>
+                </div>
+            </div>
+            <div id="reviews-container"></div>
+        </section>
+
+        <section id="estadisticas" class="content-section">
+            <h2>Tus Números Generales</h2>
+            <div class="stats-grid" style="margin-bottom: 30px;">
+                <div class="stat-card"><h3 id="stat-total-books">0</h3><p>Libros Registrados</p></div>
+                <div class="stat-card"><h3 id="stat-total-pages">0</h3><p>Páginas Leídas en Total</p></div>
+                <div class="stat-card"><h3 id="stat-avg-rating">0.0</h3><p>Calificación Promedio</p></div>
+            </div>
+            <h3>Distribución por Estados</h3>
+            <div class="stats-grid" style="margin-top: 15px;">
+                <div class="stat-card" style="border-top: 5px solid #3498db;"><h3 id="stat-status-reading" style="color: #3498db;">0</h3><p>Leyendo actualmente</p></div>
+                <div class="stat-card" style="border-top: 5px solid #2ecc71;"><h3 id="stat-status-completed" style="color: #2ecc71;">0</h3><p>Terminados</p></div>
+                <div class="stat-card" style="border-top: 5px solid #e74c3c;"><h3 id="stat-status-abandoned" style="color: #e74c3c;">0</h3><p>Abandonados</p></div>
+            </div>
+        </section>
+
+        <section id="recomendaciones" class="content-section">
+            <h2>Recomendaciones Inteligentes para Ti</h2>
+            <div id="rec-container"></div>
+        </section>
+
+    </main>
+
+    <script>
+        let biblioteca = JSON.parse(localStorage.getItem('biblioteca')) || [];
+        let libroSeleccionado = null;
+        let resultadosActuales = [];
+        let resultadosGeneroActuales = [];
+
+        // Sistema de Feedback Visual Pro (Toasts)
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast`;
+            
+            const icon = type === 'success' 
+                ? '<i class="fas fa-check-circle" style="color: #2ecc71;"></i>' 
+                : type === 'info' 
+                    ? '<i class="fas fa-info-circle" style="color: #3498db;"></i>' 
+                    : '<i class="fas fa-trash-alt" style="color: #e74c3c;"></i>';
+
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+            document.querySelectorAll('.nav-links a').forEach(link => link.classList.remove('active'));
+            
+            const targetSection = document.getElementById(sectionId);
+            if(targetSection) targetSection.classList.add('active');
+            
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                if(link.getAttribute('onclick').includes(sectionId)) link.classList.add('active');
+            });
+
+            if (sectionId === 'resenias-section') renderResenias();
+            if (sectionId === 'estadisticas') renderEstadisticas();
+            if (sectionId === 'recomendaciones') generarRecomendacionesOpenLibrary();
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme');
+            const nuevo = current === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', nuevo);
+            showToast(`Cambiado a modo ${nuevo === 'dark' ? 'oscuro' : 'claro'}`, 'info');
+        }
+
+       async function buscarLibro() {
+    const query = document.getElementById('search-input').value.trim();
+    const resultsContainer = document.getElementById('search-results');
+    if (!query) return;
+    
+    resultsContainer.innerHTML = '<p class="empty-msg">Buscando libros en el catálogo mundial...</p>';
+    document.getElementById('register-form').classList.add('hidden');
+    resultadosActuales = [];
+
+    try {
+        // MEJORA: Buscamos por coincidencia general (q) pero también forzamos la búsqueda por autor (author) o título (title) combinados
+        const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&author=${encodeURIComponent(query)}&limit=25`;
+        let response = await fetch(url);
+        let data = await response.json();
+
+        // Si la búsqueda combinada no trae nada (por ejemplo, si buscas un libro raro), hacemos un intento de respaldo normal
+        if (!data.docs || data.docs.length === 0) {
+            const fallbackUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=25`;
+            const fallbackResponse = await fetch(fallbackUrl);
+            data = await fallbackResponse.json();
+        }
+
+        resultsContainer.innerHTML = '';
+
+        if (!data.docs || data.docs.length === 0) {
+            resultsContainer.innerHTML = '<p class="empty-msg">No se encontraron resultados.</p>';
+            return;
+        }
+
+        // Eliminamos duplicados visuales por título para que no se llene la pantalla de la misma obra en diferentes idiomas
+        const titulosVistos = new Set();
+        resultadosActuales = data.docs.filter(doc => {
+            const llave = (doc.title || '').toLowerCase().trim();
+            if (titulosVistos.has(llave)) return false;
+            titulosVistos.add(llave);
+            return true;
+        });
+
+        resultadosActuales.forEach((doc, index) => {
+            const titulo = doc.title || 'Título Desconocido';
+            let cover = 'https://via.placeholder.com/128x193?text=Sin+Portada';
+            if (doc.cover_i) cover = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+
+            const card = document.createElement('div');
+            card.className = 'result-book-card';
+            card.innerHTML = `
+                <img src="${cover}" alt="Portada" onerror="this.src='https://via.placeholder.com/128x193?text=Sin+Portada'">
+                <h4 style="font-size:0.85rem; margin-top:5px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${titulo}</h4>
+            `;
+            card.onclick = () => seleccionarLibroPorIndice(index, cover, 'general');
+            resultsContainer.appendChild(card);
+        });
+    } catch (error) {
+        resultsContainer.innerHTML = '<p class="empty-msg" style="color:red;">Error de conexión. Intenta de nuevo.</p>';
+    }
+}
+
+        async function buscarPorGenero() {
+            const genero = document.getElementById('genre-select').value;
+            const resultsContainer = document.getElementById('genre-results');
+            if (!genero) {
+                resultsContainer.innerHTML = '<p class="empty-msg">Por favor, selecciona un género de la lista.</p>';
+                return;
+            }
+            
+            resultsContainer.innerHTML = '<p class="empty-msg">Explorando estanterías de la categoría...</p>';
+            resultadosGeneroActuales = [];
+
+            try {
+                const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=20`;
+                const response = await fetch(url);
+                const data = await response.json();
+                resultsContainer.innerHTML = '';
+
+                if (!data.docs || data.docs.length === 0) {
+                    resultsContainer.innerHTML = '<p class="empty-msg" style="font-weight:bold;">No hay libros registrados para este género en este momento.</p>';
+                    return;
+                }
+
+                resultadosGeneroActuales = data.docs;
+                resultadosGeneroActuales.forEach((doc, index) => {
+                    const titulo = doc.title || 'Título Desconocido';
+                    let cover = 'https://via.placeholder.com/128x193?text=Sin+Portada';
+                    if (doc.cover_i) cover = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+
+                    const card = document.createElement('div');
+                    card.className = 'result-book-card';
+                    card.innerHTML = `
+                        <img src="${cover}" alt="Portada" onerror="this.src='https://via.placeholder.com/128x193?text=Sin+Portada'">
+                        <h4 style="font-size:0.85rem; margin-top:5px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${titulo}</h4>
+                    `;
+                    card.onclick = () => {
+                        showSection('principal');
+                        seleccionarLibroPorIndice(index, cover, 'genero');
+                    };
+                    resultsContainer.appendChild(card);
+                });
+            } catch (error) {
+                resultsContainer.innerHTML = '<p class="empty-msg" style="color:red;">No pudimos conectar con la base de datos de géneros.</p>';
+            }
+        }
+
+        function seleccionarLibroPorIndice(index, cover, origen) {
+            const doc = (origen === 'general') ? resultadosActuales[index] : resultadosGeneroActuales[index];
+            if (!doc) return;
+
+            const infoLibro = {
+                title: doc.title,
+                authors: doc.author_name,
+                publisher: doc.publisher ? doc.publisher[0] : 'Editorial No Registrada',
+                categories: doc.subject
+            };
+            
+            let pages = doc.number_of_pages_median || doc.number_of_pages || doc.page_count;
+            if (!pages) {
+                const semilla = doc.title.length + (doc.first_publish_year || 2000);
+                pages = 240 + (semilla % 210);
+            }
+            
+            cargarFormularioRegistro(infoLibro, cover, pages);
+        }
+
+        function cargarFormularioRegistro(info, cover, pages, indexParaEditar = null) {
+            libroSeleccionado = {
+                titulo: info.title || 'Título Desconocido',
+                autor: (info.authors && info.authors[0]) ? info.authors[0] : 'Autor Desconocido',
+                editorial: info.publisher || 'Editorial No Registrada',
+                categorias: info.categories || ['General'],
+                paginasTotales: parseInt(pages) || 200,
+                portada: cover,
+                editandoIndex: indexParaEditar
+            };
+
+            document.getElementById('preview-cover').src = libroSeleccionado.portada;
+            document.getElementById('preview-title').innerText = libroSeleccionado.titulo;
+            document.getElementById('preview-author').innerText = `Por: ${libroSeleccionado.autor}`;
+            document.getElementById('preview-pages').innerText = `Páginas totales: ${libroSeleccionado.paginasTotales} (${libroSeleccionado.editorial})`;
+            
+            const pagesInput = document.getElementById('pages-read');
+            pagesInput.max = libroSeleccionado.paginasTotales;
+            
+            if (indexParaEditar !== null) {
+                const libroExistente = biblioteca[indexParaEditar];
+                document.getElementById('book-status').value = libroExistente.estado || 'leyendo';
+                pagesInput.value = libroExistente.paginasLeidas || 0;
+                document.getElementById('review-comment').value = libroExistente.comentario || '';
+                updateStars(libroExistente.calificacion || 0);
+            } else {
+                document.getElementById('book-status').value = 'leyendo';
+                pagesInput.value = 0;
+                document.getElementById('review-comment').value = '';
+                updateStars(0);
+            }
+            
+            calcularProgreso();
+            document.getElementById('register-form').classList.remove('hidden');
+            document.getElementById('register-form').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Lógica inteligente de sincronización Estado/Progreso
+        function comprobarEstadoCambio() {
+            const estado = document.getElementById('book-status').value;
+            const pagesInput = document.getElementById('pages-read');
+            if (estado === 'terminado' && libroSeleccionado) {
+                pagesInput.value = libroSeleccionado.paginasTotales;
+            } else if (estado === 'leyendo' && pagesInput.value == libroSeleccionado?.paginasTotales) {
+                pagesInput.value = Math.round(libroSeleccionado.paginasTotales * 0.5); // Regresa a la mitad si pasa a leyendo
+            }
+            calcularProgreso();
+        }
+
+        function calcularProgreso() {
+            if (!libroSeleccionado) return;
+            const read = parseInt(document.getElementById('pages-read').value) || 0;
+            const total = libroSeleccionado.paginasTotales;
+            const porcentaje = Math.min(Math.round((read / total) * 100), 100);
+
+            document.getElementById('progress-bar-fill').style.width = `${porcentaje}%`;
+            document.getElementById('progress-text').innerText = `${porcentaje}% completado (${read}/${total} pág.)`;
+
+            // Auto-sincroniza estado si llega al 100% leyendo
+            const estadoSelect = document.getElementById('book-status');
+            if(porcentaje === 100 && estadoSelect.value !== 'terminado') {
+                estadoSelect.value = 'terminado';
+            } else if (porcentaje < 100 && estadoSelect.value === 'terminado') {
+                estadoSelect.value = 'leyendo';
+            }
+        }
+
+        function updateStars(rating) {
+            document.getElementById('rating-value').innerText = rating;
+            document.getElementById('rating-slider').value = rating;
+            const container = document.getElementById('star-display');
+            container.innerHTML = '';
+
+            for (let i = 1; i <= 5; i++) {
+                if (rating >= i) container.innerHTML += '★';
+                else if (rating >= i - 0.5) container.innerHTML += '🌗';
+                else container.innerHTML += '☆';
+            }
+        }
+
+        function guardarLibro() {
+            if (!libroSeleccionado) return;
+
+            const read = parseInt(document.getElementById('pages-read').value) || 0;
+            const rating = parseFloat(document.getElementById('rating-slider').value);
+            const comment = document.getElementById('review-comment').value;
+            const status = document.getElementById('book-status').value;
+
+            const datosRegistro = {
+                titulo: libroSeleccionado.titulo,
+                autor: libroSeleccionado.autor,
+                editorial: libroSeleccionado.editorial,
+                categorias: libroSeleccionado.categorias,
+                paginasTotales: libroSeleccionado.paginasTotales,
+                portada: libroSeleccionado.portada,
+                paginasLeidas: read,
+                calificacion: rating,
+                comentario: comment,
+                estado: status,
+                fecha: new Date().toLocaleDateString()
+            };
+
+            if (libroSeleccionado.editandoIndex !== null) {
+                biblioteca[libroSeleccionado.editandoIndex] = datosRegistro;
+                showToast('¡Libro e historial actualizados con éxito!', 'success');
+            } else {
+                biblioteca.push(datosRegistro);
+                showToast('¡Guardado en tu biblioteca personal!', 'success');
+            }
+
+            localStorage.setItem('biblioteca', JSON.stringify(biblioteca));
+            document.getElementById('register-form').classList.add('hidden');
+            libroSeleccionado = null;
+            document.getElementById('search-results').innerHTML = '';
+            renderResenias();
+        }
+
+        // Nueva función para eliminar registros individuales
+        function eliminarLibro(index) {
+            if (confirm('¿Seguro que quieres borrar este libro de tu historial de lecturas?')) {
+                const tituloBorrado = biblioteca[index].titulo;
+                biblioteca.splice(index, 1);
+                localStorage.setItem('biblioteca', JSON.stringify(biblioteca));
+                showToast(`"${tituloBorrado}" fue eliminado.`, 'danger');
+                renderResenias();
+            }
+        }
+
+        // Historial con filtros combinados (Ordenamiento + Estado)
+        function renderResenias() {
+            const container = document.getElementById('reviews-container');
+            const filtroOrden = document.getElementById('sort-select') ? document.getElementById('sort-select').value : 'recientes';
+            const filtroEstado = document.getElementById('status-filter') ? document.getElementById('status-filter').value : 'todos';
+            container.innerHTML = '';
+
+            if (biblioteca.length === 0) {
+                container.innerHTML = '<p class="empty-msg">No hay libros guardados en tu historial aún.</p>';
+                return;
+            }
+
+            // Mapeamos para mantener la referencia del índice real de borrado/edición
+            let listaFiltrada = biblioteca.map((libro, index) => ({ ...libro, originalIndex: index }));
+
+            // 1. Filtrado por Estado
+            if (filtroEstado !== 'todos') {
+                listaFiltrada = listaFiltrada.filter(libro => libro.estado === filtroEstado);
+            }
+
+            if (listaFiltrada.length === 0) {
+                container.innerHTML = '<p class="empty-msg">No tienes libros con este estado específico.</p>';
+                return;
+            }
+
+            // 2. Filtro de Ordenamiento
+            if (filtroOrden === 'rating-desc') {
+                listaFiltrada.sort((a, b) => b.calificacion - a.calificacion);
+            } else if (filtroOrden === 'rating-asc') {
+                listaFiltrada.sort((a, b) => a.calificacion - b.calificacion);
+            } else if (filtroOrden === 'progreso-desc') {
+                listaFiltrada.sort((a, b) => (b.paginasLeidas / b.paginasTotales) - (a.paginasLeidas / a.paginasTotales));
+            } else if (filtroOrden === 'progreso-asc') {
+                listaFiltrada.sort((a, b) => (a.paginasLeidas / a.paginasTotales) - (b.paginasLeidas / b.paginasTotales));
+            } else if (filtroOrden === 'paginas-desc') {
+                listaFiltrada.sort((a, b) => b.paginasTotales - a.paginasTotales);
+            } else if (filtroOrden === 'paginas-asc') {
+                listaFiltrada.sort((a, b) => a.paginasTotales - b.paginasTotales);
+            } else {
+                listaFiltrada.reverse();
+            }
+
+            listaFiltrada.forEach((libro) => {
+                const card = document.createElement('div');
+                card.className = 'review-card';
+                
+                let estrellasHTML = '';
+                for (let i = 1; i <= 5; i++) {
+                    if (libro.calificacion >= i) estrellasHTML += '★';
+                    else if (libro.calificacion >= i - 0.5) estrellasHTML += '🌗';
+                    else HTML += '☆';
+                }
+
+                const comentarioFinal = libro.comentario.trim() 
+                    ? `&ldquo;${libro.comentario}&rdquo;` 
+                    : '<span style="color: #888; font-style: italic;">Sin comentarios adicionales.</span>';
+
+                const pct = Math.min(Math.round((libro.paginasLeidas / libro.paginasTotales) * 100), 100);
+                const estadoTxt = libro.estado === 'terminado' ? 'Terminado' : libro.estado === 'abandonado' ? 'Abandonado' : 'Leyendo';
+
+                card.innerHTML = `
+                    <img src="${libro.portada}" alt="Portada" onerror="this.src='https://via.placeholder.com/128x193?text=Sin+Portada'">
+                    <div style="flex-grow: 1;">
+                        <span class="badge badge-${libro.estado || 'leyendo'}">${estadoTxt}</span>
+                        <h3>${libro.titulo}</h3>
+                        <p style="margin: 3px 0; color: var(--text-light); font-size:0.9rem;">Por: ${libro.autor}</p>
+                        <p><strong>Puntuación:</strong> <span style="color:#f1c40f">${estrellasHTML}</span> (${libro.calificacion})</p>
+                        <p style="margin-top:5px;"><em>${comentarioFinal}</em></p>
+                        <div style="margin-top: 10px; font-size: 0.85rem;">
+                            <strong>Progreso:</strong> ${libro.paginasLeidas}/${libro.paginasTotales} pág. (${pct}%)
+                            <div class="progress-container" style="height:8px; margin-top:4px;">
+                                <div style="width: ${pct}%; background: #2ecc71; height: 100%;"></div>
+                            </div>
+                        </div>
+                        <small style="display:block; margin-top: 5px; color: var(--text-light);">Agregado: ${libro.fecha}</small>
+                    </div>
+                    <div style="margin-left: 15px; display: flex; flex-direction: column; gap: 8px; justify-content: center;">
+                        <button onclick="prepararEdicion(${libro.originalIndex})" style="padding: 8px 12px; background: #3498db; font-size:0.85rem;"><i class="fas fa-edit"></i> Editar</button>
+                        <button onclick="eliminarLibro(${libro.originalIndex})" style="padding: 8px 12px; background: #e74c3c; font-size:0.85rem;"><i class="fas fa-trash-alt"></i> Borrar</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function prepararEdicion(index) {
+            const libro = biblioteca[index];
+            if (!libro) return;
+            showSection('principal');
+            const infoLibro = { title: libro.titulo, authors: [libro.autor], publisher: libro.editorial, categories: libro.categorias };
+            cargarFormularioRegistro(infoLibro, libro.portada, libro.paginasTotales, index);
+        }
+
+        // Estadísticas mejoradas con los nuevos estados
+        function renderEstadisticas() {
+            document.getElementById('stat-total-books').innerText = biblioteca.length;
+            const totalPages = biblioteca.reduce((acc, libro) => acc + libro.paginasLeidas, 0);
+            document.getElementById('stat-total-pages').innerText = totalPages;
+            const totalRating = biblioteca.reduce((acc, libro) => acc + libro.calificacion, 0);
+            const avg = biblioteca.length ? (totalRating / biblioteca.length).toFixed(1) : '0.0';
+            document.getElementById('stat-avg-rating').innerText = avg;
+
+            // Filtros contadores por estado
+            const leyendoCount = biblioteca.filter(l => l.estado === 'leyendo' || !l.estado).length;
+            const terminadoCount = biblioteca.filter(l => l.estado === 'terminado').length;
+            const abandonadoCount = biblioteca.filter(l => l.estado === 'abandonado').length;
+
+            document.getElementById('stat-status-reading').innerText = leyendoCount;
+            document.getElementById('stat-status-completed').innerText = terminadoCount;
+            document.getElementById('stat-status-abandoned').innerText = abandonadoCount;
+        }
+
+        async function generarRecomendacionesOpenLibrary() {
+            const recContainer = document.getElementById('rec-container');
+            if (biblioteca.length === 0) {
+                recContainer.innerHTML = '<p class="empty-msg">Agrega lecturas a tu biblioteca para desbloquear recomendaciones automáticas.</p>';
+                return;
+            }
+
+            const favoritos = biblioteca.filter(l => l.calificacion >= 4);
+            const libroBase = favoritos.length ? favoritos[favoritos.length - 1] : biblioteca[biblioteca.length - 1];
+            
+            const autorBuscar = libroBase.autor;
+            const tieneGenero = libroBase.categorias && libroBase.categorias.length > 0 && libroBase.categorias[0] !== 'General';
+            const generoBuscar = tieneGenero ? libroBase.categorias[0] : 'Fiction';
+
+            recContainer.innerHTML = `<p style="margin-bottom: 20px; font-size: 1.05rem;">Porque leíste <strong>"${libroBase.titulo}"</strong>:</p>`;
+
+            const tituloAutor = document.createElement('h3');
+            tituloAutor.innerHTML = `<i class="fas fa-user-feather" style="color:var(--accent);"></i> Más obras de ${autorBuscar}`;
+            tituloAutor.style.margin = "15px 0 10px 0";
+            recContainer.appendChild(tituloAutor);
+
+            const gridAutor = document.createElement('div');
+            gridAutor.className = 'search-results';
+            gridAutor.innerHTML = '<p class="empty-msg">Buscando libros del escritor...</p>';
+            recContainer.appendChild(gridAutor);
+
+            const tituloGenero = document.createElement('h3');
+            tituloGenero.innerHTML = `<i class="fas fa-bookmark" style="color:#e67e22;"></i> Títulos del mismo género (${generoBuscar})`;
+            tituloGenero.style.margin = "30px 0 10px 0";
+            recContainer.appendChild(tituloGenero);
+
+            const gridGenero = document.createElement('div');
+            gridGenero.className = 'search-results';
+            gridGenero.innerHTML = '<p class="empty-msg">Buscando libros relacionados...</p>';
+            recContainer.appendChild(gridGenero);
+
+            try {
+                const responseAutor = await fetch(`https://openlibrary.org/search.json?author=${encodeURIComponent(autorBuscar)}&limit=6`);
+                const dataAutor = await responseAutor.json();
+                gridAutor.innerHTML = '';
+                let cont = 0;
+                if(dataAutor.docs) {
+                    dataAutor.docs.forEach(doc => {
+                        if (cont >= 5 || doc.title.toLowerCase() === libroBase.titulo.toLowerCase()) return;
+                        inyectarTarjetaRecomendacion(gridAutor, doc, autorBuscar, generoBuscar);
+                        cont++;
+                    });
+                }
+                if (cont === 0) gridAutor.innerHTML = '<p class="empty-msg">No encontramos más libros disponibles de este autor.</p>';
+            } catch (e) { gridAutor.innerHTML = '<p class="empty-msg">No se pudo cargar la fila de autor.</p>'; }
+
+            try {
+                const responseGenero = await fetch(`https://openlibrary.org/search.json?subject=${encodeURIComponent(generoBuscar)}&limit=8`);
+                const dataGenero = await responseGenero.json();
+                gridGenero.innerHTML = '';
+                
+                const filtrados = dataGenero.docs ? dataGenero.docs.filter(doc => {
+                    const autorDoc = doc.author_name ? doc.author_name[0] : '';
+                    return doc.title.toLowerCase() !== libroBase.titulo.toLowerCase() && autorDoc !== autorBuscar;
+                }) : [];
+
+                if (filtrados.length === 0) {
+                    gridGenero.innerHTML = '<p class="empty-msg">No hay otros autores para este género registrado.</p>';
+                } else {
+                    filtrados.slice(0, 5).forEach(doc => {
+                        const autorDoc = doc.author_name ? doc.author_name[0] : 'Autor Desconocido';
+                        inyectarTarjetaRecomendacion(gridGenero, doc, autorDoc, generoBuscar);
+                    });
+                }
+            } catch (e) { gridGenero.innerHTML = '<p class="empty-msg">No se pudo cargar la fila de género.</p>'; }
+        }
+
+        function inyectarTarjetaRecomendacion(contenedor, doc, autor, genero) {
+            let cover = 'https://via.placeholder.com/128x193?text=Sin+Portada';
+            if (doc.cover_i) cover = `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`;
+
+            let pages = doc.number_of_pages_median || doc.number_of_pages || doc.page_count;
+            if (!pages) {
+                const semilla = doc.title.length + (doc.first_publish_year || 2000);
+                pages = 240 + (semilla % 210);
+            }
+
+            const card = document.createElement('div');
+            card.className = 'result-book-card';
+            card.innerHTML = `
+                <img src="${cover}" alt="Portada" onerror="this.src='https://via.placeholder.com/128x193?text=Sin+Portada'">
+                <h4 style="font-size:0.85rem; margin-top:5px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;">${doc.title}</h4>
+                <small style="display:block; margin-top:3px; color:var(--text-light); font-size:0.75rem; text-overflow:ellipsis; white-space:nowrap; overflow:hidden;">${autor}</small>
+                <small style="display:block; color:#999; font-size:0.7rem;">${pages} pág.</small>
+            `;
+            
+            const infoLibro = { title: doc.title, authors: [autor], publisher: doc.publisher ? doc.publisher[0] : 'Desconocido', categories: [genero] };
+            card.onclick = () => {
+                showSection('principal');
+                cargarFormularioRegistro(infoLibro, cover, pages);
+            };
+            contenedor.appendChild(card);
+        }
+
+        updateStars(0);
+    </script>
+</body>
+</html>
